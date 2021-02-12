@@ -1,0 +1,55 @@
+---
+- name: Create user in all server
+  hosts: all
+  become: true
+  vars:
+        users:
+        - username: "eduardo"
+          uid: "1220"
+          nombre: "Eduardo Romero"
+          contrasena: "Er13121989"
+        - username: "rodolfo"
+          uid: "1221"
+          nombre: "Rodolfo López"
+          contrasena: "Rl05081987"
+        - username: "alejandro"
+          uid: "1222"
+          nombre: "Alejandro Perez"
+          contrasena: "Ap10051990"
+
+  tasks:
+
+  - name: "Create administrador group"
+    group:
+        name: "administrador"
+        state: present
+
+  - name: "Create user accounts and users to group"
+    user:
+        name: "{{ item.username }}"
+        state: present
+        group: "administrador"
+        uid: "{{ item.uid }}"
+        comment: "{{ item.nombre }}"
+        password: "{{ item.contrasena | password_hash('sha512') }}"
+        expires: "-1"
+        shell: "/bin/bash"
+    with_items: "{{ users }}"
+
+  - name: "Set password expiration days limit"
+    raw: "chage -M 365 {{ item.username }}"
+    with_items: "{{ users }}"
+
+  - name: "Touch administrador file"
+    file:
+        path: "/etc/sudoers.d/administrador"
+        state: touch
+        mode: "0644"
+        owner: "root"
+        group: "root"
+
+  - name: "Allow users of administrador group to sudo without a password"
+    lineinfile:
+        dest: "/etc/sudoers.d/administrador"
+        state: present
+        line: "%administrador ALL=(ALL) NOPASSWD: ALL"
